@@ -6,7 +6,7 @@ using System.Text;
 
 namespace ThreeByTwoTasks
 {
-	public class FileFinder
+	internal class FileFinder
 	{
 		public IEnumerable<string> Find(string folder, string filter)
 		{

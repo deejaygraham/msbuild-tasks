@@ -51,6 +51,7 @@
   <ItemGroup>
     <Compile Include="FileFinder.cs" />
     <Compile Include="HyperlinkEventArgs.cs" />
+    <Compile Include="ImageFinder.cs" />
     <Compile Include="LinkFinder.cs" />
     <Compile Include="LocalLinkChecker.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -6,7 +6,7 @@ using System.Text;
 
 namespace ThreeByTwoTasks
 {
-	public class HyperlinkEventArgs : EventArgs
+	internal class HyperlinkEventArgs : EventArgs
 	{
 		public HtmlDocument Document { get; set; }
 

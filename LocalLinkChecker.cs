@@ -120,6 +120,45 @@ namespace ThreeByTwoTasks
 
 			linkFinder.Find(htmlList);
 
+			ImageFinder imageFinder = new ImageFinder();
+
+			imageFinder.ImageFound += (obj, e) =>
+			{
+				string link = e.Link;
+
+				Log.LogMessage(MessageImportance.Low, "Found image: {0}", link);
+
+				if (link.StartsWith("http"))
+				{
+					// absolute path...
+					// ping it?
+					Log.LogMessage(MessageImportance.Low, "Ignoring link to external image: {0}", link);
+				}
+				else
+				{
+					// local path
+					try
+					{
+						string thisFilesFolder = Path.GetDirectoryName(e.FilePath) + "\\";
+
+						Uri baseFolder = new Uri(thisFilesFolder);
+						Uri u = new Uri(baseFolder, link);
+						string fullPath = u.LocalPath.Replace("%20", " ");
+
+						if (!File.Exists(fullPath))
+						{
+							Log.LogError("{0}({1},{2}): Link to \"{3}\" does not exist", e.FilePath, e.Line, e.Column, link);
+						}
+					}
+					catch (Exception ex)
+					{
+						Log.LogWarningFromException(ex);
+					}
+				}
+			};
+
+			imageFinder.Find(htmlList);
+
 			if (!Log.HasLoggedErrors)
 			{
 				Log.LogMessage(MessageImportance.Normal, "No link errors found");

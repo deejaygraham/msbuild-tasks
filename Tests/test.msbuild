@@ -1,9 +1,9 @@
 <Project DefaultTargets="RunTests" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
 	
-	<UsingTask AssemblyFile="$(MSBuildProjectDirectory)\..\bin\Debug\ThreeByTwoTasks.dll" TaskName="LocalLinkChecker" />
+	<UsingTask AssemblyFile="$(MSBuildProjectDirectory)\..\bin\Debug\MsBuild.ThreeByTwo.Tasks.dll" TaskName="MsBuild.ThreeByTwo.Tasks.LocalLinkChecker" />
 
 	<Target Name="RunTests">
-		<LocalLinkChecker 
+		<MsBuild.ThreeByTwo.Tasks.LocalLinkChecker 
 			Folder="$(MSBuildProjectDirectory)\html\"
 			/>
 	</Target>

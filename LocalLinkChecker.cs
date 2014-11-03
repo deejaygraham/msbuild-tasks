@@ -1,12 +1,12 @@
-﻿using Microsoft.Build.Framework;
+﻿using HtmlAgilityPack;
+using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 
-namespace ThreeByTwoTasks
+namespace MsBuild.ThreeByTwo.Tasks
 {
 	public class LocalLinkChecker : Task
 	{
@@ -14,6 +14,8 @@ namespace ThreeByTwoTasks
 		public ITaskItem Folder { get; set; }
 
 		public string IgnoreLinks { get; set; }
+
+        public bool WarningsAsErrors { get; set; }
 
 		public override bool Execute()
 		{
@@ -68,7 +70,7 @@ namespace ThreeByTwoTasks
 
 						if (idItem == null)
 						{
-							Log.LogError("{0}({1},{2}): Link to \"{3}\" does not exist", e.FilePath, e.Line, e.Column, link);
+                            LogWarningOrError("{0}({1},{2}): Link to \"{3}\" does not exist", e.FilePath, e.Line, e.Column, link);
 						}
 					}
 				}
@@ -106,7 +108,7 @@ namespace ThreeByTwoTasks
 
 								if (!File.Exists(fullPath))
 								{
-									Log.LogError("{0}({1},{2}): Link to \"{3}\" does not exist", e.FilePath, e.Line, e.Column, link);
+                                    LogWarningOrError("{0}({1},{2}): Link to \"{3}\" does not exist", e.FilePath, e.Line, e.Column, link);
 								}
 							}
 							catch(Exception ex)
@@ -118,46 +120,80 @@ namespace ThreeByTwoTasks
 				}
 			};
 
-			linkFinder.Find(htmlList);
+            ImageFinder imageFinder = new ImageFinder();
 
-			ImageFinder imageFinder = new ImageFinder();
+            imageFinder.ImageFound += (obj, e) =>
+            {
+                string link = e.Link;
 
-			imageFinder.ImageFound += (obj, e) =>
+                Log.LogMessage(MessageImportance.Low, "Found image: {0}", link);
+
+                if (link.StartsWith("http"))
+                {
+                    // absolute path...
+                    // ping it?
+                    Log.LogMessage(MessageImportance.Low, "Ignoring link to external image: {0}", link);
+                }
+                else
+                {
+                    // local path
+                    try
+                    {
+                        string thisFilesFolder = Path.GetDirectoryName(e.FilePath) + "\\";
+
+                        Uri baseFolder = new Uri(thisFilesFolder);
+                        Uri u = new Uri(baseFolder, link);
+                        string fullPath = u.LocalPath.Replace("%20", " ");
+
+                        if (!File.Exists(fullPath))
+                        {
+                            LogWarningOrError("{0}({1},{2}): Link to \"{3}\" does not exist", e.FilePath, e.Line, e.Column, link);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.LogWarningFromException(ex);
+                    }
+                }
+            };
+
+			foreach (string htmlDocument in htmlList)
 			{
-				string link = e.Link;
-
-				Log.LogMessage(MessageImportance.Low, "Found image: {0}", link);
-
-				if (link.StartsWith("http"))
+				try
 				{
-					// absolute path...
-					// ping it?
-					Log.LogMessage(MessageImportance.Low, "Ignoring link to external image: {0}", link);
+                    HtmlDocument html = new HtmlDocument
+                    {
+                        OptionCheckSyntax = true,
+                        OptionExtractErrorSourceText = true
+                    };
+
+					html.Load(htmlDocument);
+
+					if (html.DocumentNode == null)
+						continue;
+
+                    if (html.ParseErrors.Any())
+                    {
+                        string fileName = Path.GetFileName(htmlDocument);
+
+                        Log.LogMessage(MessageImportance.High, "Parse errors found...");
+
+                        foreach (var error in html.ParseErrors)
+                        {
+                            LogWarningOrError("{0}({1},{2}): {3}", fileName, error.Line, error.LinePosition, error.Reason);
+                        }
+                    }
+                    else
+                        Log.LogMessage(MessageImportance.High, "No parse errors found");
+
+					linkFinder.Find(htmlDocument, html);
+                    imageFinder.Find(htmlDocument, html);
 				}
-				else
+				catch (Exception ex)
 				{
-					// local path
-					try
-					{
-						string thisFilesFolder = Path.GetDirectoryName(e.FilePath) + "\\";
-
-						Uri baseFolder = new Uri(thisFilesFolder);
-						Uri u = new Uri(baseFolder, link);
-						string fullPath = u.LocalPath.Replace("%20", " ");
-
-						if (!File.Exists(fullPath))
-						{
-							Log.LogError("{0}({1},{2}): Link to \"{3}\" does not exist", e.FilePath, e.Line, e.Column, link);
-						}
-					}
-					catch (Exception ex)
-					{
-						Log.LogWarningFromException(ex);
-					}
+					Log.LogWarningFromException(ex);
 				}
-			};
-
-			imageFinder.Find(htmlList);
+			}
 
 			if (!Log.HasLoggedErrors)
 			{
@@ -166,5 +202,13 @@ namespace ThreeByTwoTasks
 
 			return !Log.HasLoggedErrors;
 		}
+
+        private void LogWarningOrError(string message, params object[] arguments)
+        {
+            if (this.WarningsAsErrors)
+                Log.LogError(message, arguments);
+            else
+                Log.LogWarning(message, arguments);
+        }
 	}
 }

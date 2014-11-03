@@ -1,10 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
 
-namespace ThreeByTwoTasks
+namespace MsBuild.ThreeByTwo.Tasks
 {
 	internal class FileFinder
 	{

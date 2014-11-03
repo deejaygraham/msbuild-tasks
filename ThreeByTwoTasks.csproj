@@ -7,8 +7,8 @@
     <ProjectGuid>{59BBB8D0-D581-408E-9B22-3C30D94310D5}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>ThreeByTwoTasks</RootNamespace>
-    <AssemblyName>ThreeByTwoTasks</AssemblyName>
+    <RootNamespace>MsBuild.ThreeByTwo.Tasks</RootNamespace>
+    <AssemblyName>MsBuild.ThreeByTwo.Tasks</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>

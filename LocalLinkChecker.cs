@@ -10,12 +10,19 @@ namespace MsBuild.ThreeByTwo.Tasks
 {
 	public class LocalLinkChecker : Task
 	{
+		public LocalLinkChecker()
+		{
+			this.IncludeSubFolders = true;
+		}
+
 		[Required]
 		public ITaskItem Folder { get; set; }
 
 		public string IgnoreLinks { get; set; }
 
         public bool WarningsAsErrors { get; set; }
+
+		public bool IncludeSubFolders { get; set; }
 
 		public override bool Execute()
 		{
@@ -37,7 +44,41 @@ namespace MsBuild.ThreeByTwo.Tasks
 
 			FileFinder fileFinder = new FileFinder();
 
-			var htmlList = fileFinder.Find(checkFolder, "*.htm?");
+			SearchOption searchDepth = this.IncludeSubFolders ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
+
+			var htmlList = fileFinder.Find(checkFolder, "*.htm?", searchDepth);
+
+			var idList = new List<string>();
+
+			UniqueItemsFinder idFinder = new UniqueItemsFinder();
+
+			idFinder.IdFound += (obj, e) =>
+			{
+				idList.Add(e.Link);
+			};
+
+			foreach (string htmlDocument in htmlList)
+			{
+				try
+				{
+					HtmlDocument html = new HtmlDocument
+					{
+						OptionCheckSyntax = true,
+						OptionExtractErrorSourceText = true
+					};
+
+					html.Load(htmlDocument);
+
+					if (html.DocumentNode == null)
+						continue;
+
+					idFinder.Find(htmlDocument, html);
+				}
+				catch (Exception ex)
+				{
+					Log.LogWarningFromException(ex);
+				}
+			}
 
 			List<string> errors = new List<string>();
 
@@ -58,19 +99,30 @@ namespace MsBuild.ThreeByTwo.Tasks
 
 				Log.LogMessage(MessageImportance.Low, "Found link: {0}", link);
 
+				if (link.StartsWith("http") || link.StartsWith("//"))
+				{
+					// absolute path...
+					// ping it?
+					Log.LogMessage(MessageImportance.Low, "Ignoring link to external page: {0}", link);
+					return;
+				}
+
 				if (link.StartsWith("#"))
 				{
-					// internal link on the current page...
-					var allInternalIds = e.Document.DocumentNode.SelectNodes("*[@id]");
-
-					if (allInternalIds != null)
+					if (link.Length > 1)
 					{
-						// find the link...
-						var idItem = allInternalIds.FindFirst(link.Substring(1));
+						// internal link on the current page...
+						var allInternalIds = e.Document.DocumentNode.SelectNodes("*[@id]");
 
-						if (idItem == null)
+						if (allInternalIds != null)
 						{
-                            LogWarningOrError("{0}({1},{2}): Link to \"{3}\" does not exist", e.FilePath, e.Line, e.Column, link);
+							// find the link...
+							var idItem = allInternalIds.FindFirst(link.Substring(1));
+
+							if (idItem == null)
+							{
+								LogWarningOrError("{0}({1},{2}): Link to \"{3}\" does not exist", e.FilePath, e.Line, e.Column, link);
+							}
 						}
 					}
 				}
@@ -82,39 +134,42 @@ namespace MsBuild.ThreeByTwo.Tasks
 					{
 						// internal link to an internal id in another document
 						// not handled yet.
-						Log.LogMessage(MessageImportance.Low, "Ignoring link to id within page: {0}", link);
+						string docPlushHash = link;
+
+						int lastWhack = docPlushHash.LastIndexOf('/');
+
+						if (lastWhack != -1)
+						{
+							docPlushHash = docPlushHash.Substring(lastWhack + 1);
+						}
+
+						if (!idList.Contains(docPlushHash))
+						{
+							LogWarningOrError("{0}({1},{2}): Link to \"{3}\" does not exist", e.FilePath, e.Line, e.Column, docPlushHash);
+						}
 					}
 					else
 					{
-						if (link.StartsWith("http") || link.StartsWith("//"))
+						// local path
+						try
 						{
-							// absolute path...
-							// ping it?
-							Log.LogMessage(MessageImportance.Low, "Ignoring link to external page: {0}", link);
+							string thisFilesFolder = Path.GetDirectoryName(e.FilePath) + "\\";
+							Uri baseFolder = new Uri(thisFilesFolder);
+							Uri u = new Uri(baseFolder, link);
+
+							const string HtmlSpace = "%20";
+							const string LocalSpace = " ";
+
+							string fullPath = u.LocalPath.Replace(HtmlSpace, LocalSpace);
+
+							if (!File.Exists(fullPath))
+							{
+                                LogWarningOrError("{0}({1},{2}): Link to \"{3}\" does not exist", e.FilePath, e.Line, e.Column, link);
+							}
 						}
-						else
+						catch(Exception ex)
 						{
-							// local path
-							try
-							{
-								string thisFilesFolder = Path.GetDirectoryName(e.FilePath) + "\\";
-								Uri baseFolder = new Uri(thisFilesFolder);
-								Uri u = new Uri(baseFolder, link);
-
-								const string HtmlSpace = "%20";
-								const string LocalSpace = " ";
-
-								string fullPath = u.LocalPath.Replace(HtmlSpace, LocalSpace);
-
-								if (!File.Exists(fullPath))
-								{
-                                    LogWarningOrError("{0}({1},{2}): Link to \"{3}\" does not exist", e.FilePath, e.Line, e.Column, link);
-								}
-							}
-							catch(Exception ex)
-							{
-								Log.LogWarningFromException(ex);
-							}
+							Log.LogWarningFromException(ex);
 						}
 					}
 				}
@@ -133,27 +188,26 @@ namespace MsBuild.ThreeByTwo.Tasks
                     // absolute path...
                     // ping it?
                     Log.LogMessage(MessageImportance.Low, "Ignoring link to external image: {0}", link);
+					return;
                 }
-                else
+
+				// local path
+                try
                 {
-                    // local path
-                    try
-                    {
-                        string thisFilesFolder = Path.GetDirectoryName(e.FilePath) + "\\";
+                    string thisFilesFolder = Path.GetDirectoryName(e.FilePath) + "\\";
 
-                        Uri baseFolder = new Uri(thisFilesFolder);
-                        Uri u = new Uri(baseFolder, link);
-                        string fullPath = u.LocalPath.Replace("%20", " ");
+                    Uri baseFolder = new Uri(thisFilesFolder);
+                    Uri u = new Uri(baseFolder, link);
+                    string fullPath = u.LocalPath.Replace("%20", " ");
 
-                        if (!File.Exists(fullPath))
-                        {
-                            LogWarningOrError("{0}({1},{2}): Link to \"{3}\" does not exist", e.FilePath, e.Line, e.Column, link);
-                        }
-                    }
-                    catch (Exception ex)
+                    if (!File.Exists(fullPath))
                     {
-                        Log.LogWarningFromException(ex);
+                        LogWarningOrError("{0}({1},{2}): Link to \"{3}\" does not exist", e.FilePath, e.Line, e.Column, link);
                     }
+                }
+                catch (Exception ex)
+                {
+                    Log.LogWarningFromException(ex);
                 }
             };
 
@@ -184,7 +238,7 @@ namespace MsBuild.ThreeByTwo.Tasks
                         }
                     }
                     else
-                        Log.LogMessage(MessageImportance.High, "No parse errors found");
+                        Log.LogMessage(MessageImportance.Low, "No parse errors found");
 
 					linkFinder.Find(htmlDocument, html);
                     imageFinder.Find(htmlDocument, html);

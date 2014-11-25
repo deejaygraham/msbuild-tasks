@@ -56,6 +56,7 @@
     <Compile Include="LocalLinkChecker.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="UniqueItemsFinder.cs" />
+    <Compile Include="XmlMerge.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

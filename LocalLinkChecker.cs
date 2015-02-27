@@ -90,7 +90,10 @@ namespace MsBuild.ThreeByTwo.Tasks
 				string[] ignoreList = this.IgnoreLinks.Split(new char[] { ';' });
 
 				foreach (string ignoreItem in ignoreList)
+				{
+					Log.LogMessage("Ignoring links that start with \'{0}\'", ignoreItem);
 					linkFinder.Ignore(ignoreItem);
+				}
 			}
 
 			linkFinder.LinkFound += (obj, e) =>
@@ -230,7 +233,7 @@ namespace MsBuild.ThreeByTwo.Tasks
                     {
                         string fileName = Path.GetFileName(htmlDocument);
 
-                        Log.LogMessage(MessageImportance.High, "Parse errors found...");
+                        Log.LogMessage(MessageImportance.High, "{0} has html parse errors ...");
 
                         foreach (var error in html.ParseErrors)
                         {

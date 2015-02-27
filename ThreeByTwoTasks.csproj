@@ -50,6 +50,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="FileFinder.cs" />
+    <Compile Include="GenerateHash.cs" />
     <Compile Include="HyperlinkEventArgs.cs" />
     <Compile Include="ImageFinder.cs" />
     <Compile Include="LinkFinder.cs" />

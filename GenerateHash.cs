@@ -10,6 +10,11 @@ namespace MsBuild.ThreeByTwo.Tasks
 {
 	public class GenerateHash : Task
 	{
+		public GenerateHash()
+		{
+			this.Algorithm = "MD5";
+		}
+
 		[Required]
 		public ITaskItem Source { get; set; }
 
@@ -53,6 +58,12 @@ namespace MsBuild.ThreeByTwo.Tasks
 				if (!String.IsNullOrEmpty(this.Algorithm))
 				{
 					algorithm = HashAlgorithm.Create(this.Algorithm);
+					Log.LogMessage(MessageImportance.Low, "Selected {0} algorithm", this.Algorithm);
+				}
+
+				if (algorithm == null)
+				{
+					algorithm = HashAlgorithm.Create("MD5");
 				}
 			}
 			catch(Exception ex)
@@ -63,20 +74,14 @@ namespace MsBuild.ThreeByTwo.Tasks
 
 			try
 			{
-				if (algorithm == null)
-				{
-					// default
-					this.HashValue = CalculateChecksum(sourcePath);
-				}
-				else
-				{
-					this.HashValue = CalculateChecksum(sourcePath, algorithm);
-				}
+				this.HashValue = CalculateChecksum(sourcePath, algorithm);
 			}
 			catch (Exception ex)
 			{
 				Log.LogWarningFromException(ex);
 			}
+
+			Log.LogMessage(MessageImportance.Low, "Hash = {0}", this.HashValue);
 
 			return !Log.HasLoggedErrors;
 		}

@@ -23,6 +23,8 @@
 		
 		<!-- <Message Text="$(Hash)" Importance="High" /> -->
 		<Message Text="@(Hashes)" Importance="High" />
+		
+		<WriteLinesToFile File="hashes.txt" Lines="@(Hashes)"
 	</Target>
 	
 </Project>

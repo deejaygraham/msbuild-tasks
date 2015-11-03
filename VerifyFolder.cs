@@ -18,16 +18,32 @@ namespace MsBuild.ThreeByTwo.Tasks
 
 			foreach(ITaskItem folder in this.Folders)
 			{
-				string folderPath = string.Empty;
+				string folderPath = folder.GetMetadata("FullPath");
+				string metaCount = folder.GetMetadata("FileCount");
 
-				if (folder != null)
+				Log.LogMessage("Verifying {0}", folderPath);
+
+				int fileCount = 0;
+
+				if (!String.IsNullOrEmpty(metaCount))
 				{
-					folderPath = folder.GetMetadata("FullPath");
+					Int32.TryParse(metaCount, out fileCount);
 				}
-
-				if (string.IsNullOrEmpty(folderPath) || !System.IO.Directory.Exists(folderPath))
+					
+				if (!System.IO.Directory.Exists(folderPath))
 				{
 					Log.LogError("Folder \'{0}\' does not exist", folderPath);
+				}
+				else if (fileCount > 0)
+				{
+					var content = System.IO.Directory.GetFiles(folderPath, "*.*", SearchOption.TopDirectoryOnly);
+
+					Log.LogMessage("Checking folder content");
+
+					if (content.Length != fileCount)
+					{
+						Log.LogError("Folder \'{0}\' expected {1} files, actually contains {2} files", folderPath, fileCount, content.Length);
+					}
 				}
 			}
 

@@ -18,16 +18,32 @@ namespace MsBuild.ThreeByTwo.Tasks
 
 			foreach (ITaskItem file in this.Files)
 			{
-				string filePath = string.Empty;
+				string filePath = file.GetMetadata("FullPath");
+				string metaCount = file.GetMetadata("FileSize");
 
-				if (file != null)
+				Log.LogMessage("Verifying {0}", filePath);
+
+				long fileSize = 0;
+
+				if (!String.IsNullOrEmpty(metaCount))
 				{
-					filePath = file.GetMetadata("FullPath");
+					Int64.TryParse(metaCount, out fileSize);
 				}
 
-				if (string.IsNullOrEmpty(filePath) || !System.IO.File.Exists(filePath))
+				if (!System.IO.File.Exists(filePath))
 				{
 					Log.LogError("File \'{0}\' does not exist", filePath);
+				}
+				else if (fileSize > 0)
+				{
+					Log.LogMessage("Verifying file size");
+
+					var info = new System.IO.FileInfo(filePath);
+
+					if (fileSize != info.Length)
+					{
+						Log.LogError("File \'{0}\' expected to be {1}, actually {2}", filePath, fileSize, info.Length);
+					}
 				}
 			}
 
